@@ -168,6 +168,13 @@ struct ena_adapter {
 	u16 max_mtu;
 	u8 tso4_supported;
 
+	/* The admin queue isn't protected by the lock and is used to
+	 * retrieve statistics from the device. As there is no guarantee that
+	 * application won't try to get statistics from multiple threads, it is
+	 * safer to lock the queue to avoid admin queue failure.
+	 */
+	rte_spinlock_t admin_lock;
+
 	int id_number;
 	char name[ENA_NAME_MAX_LEN];
 	u8 mac_addr[ETHER_ADDR_LEN];

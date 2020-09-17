@@ -548,7 +548,9 @@ static int ena_rss_reta_update(struct rte_eth_dev *dev,
 		}
 	}
 
+	rte_spinlock_lock(&adapter->admin_lock);
 	rc = ena_com_indirect_table_set(ena_dev);
+	rte_spinlock_unlock(&adapter->admin_lock);
 	if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
 		RTE_LOG(ERR, PMD, "Cannot flush the indirect table\n");
 		return rc;
@@ -578,7 +580,9 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 	    (reta_size > RTE_RETA_GROUP_SIZE && ((reta_conf + 1) == NULL)))
 		return -EINVAL;
 
+	rte_spinlock_lock(&adapter->admin_lock);
 	rc = ena_com_indirect_table_get(ena_dev, indirect_table);
+	rte_spinlock_unlock(&adapter->admin_lock);
 	if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
 		RTE_LOG(ERR, PMD, "cannot get indirect table\n");
 		return -ENOTSUP;
@@ -926,7 +930,10 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 
 	memset(&ena_stats, 0, sizeof(ena_stats));
+
+	rte_spinlock_lock(&adapter->admin_lock);
 	rc = ena_com_get_dev_basic_stats(ena_dev, &ena_stats);
+	rte_spinlock_unlock(&adapter->admin_lock);
 	if (unlikely(rc)) {
 		RTE_LOG(ERR, PMD, "Could not retrieve statistics from ENA\n");
 		return rc;
@@ -1800,6 +1807,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		rc = -ENOMEM;
 		goto err_delete_debug_area;
 	}
+
+	rte_spinlock_init(&adapter->admin_lock);
 
 	rte_intr_callback_register(intr_handle,
 				   ena_interrupt_handler_rte,
